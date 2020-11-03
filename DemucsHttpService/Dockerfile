@@ -1,6 +1,7 @@
 FROM python:latest
+RUN mkdir /app
 COPY demucshttpservice.py config.yml /app
-WORKDIR /app
+WORKDIR /app/
 RUN apt-get update -y && pip3 install nameko
-#TODO: Add EXPOSE port
-CMD ["nameko","run", "subsservice", "--config config.yml"]
+EXPOSE 80
+CMD ["nameko","run", "demucshttpservice", "--config", "config.yml"]
