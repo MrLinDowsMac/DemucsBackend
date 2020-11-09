@@ -3,6 +3,8 @@ from werkzeug.wrappers import Response,Request
 from werkzeug.datastructures import FileStorage
 from nameko.events import EventDispatcher, SERVICE_POOL, SINGLETON
 from nameko.rpc import rpc, RpcProxy
+from pathlib import Path
+import uuid
 
 class DemucsHttpService:
     name = "demucshttpservice"    
@@ -13,9 +15,11 @@ class DemucsHttpService:
     def do_post(self, request): 
       if request.content_type.startswith("multipart/form-data"):
         audiofile = request.files.get("archivo") #busca key
-        print (audiofile.filename)
         if audiofile.mimetype == "audio/mpeg" or audiofile.mimetype == "audio/wave":
-          #TODO: Perform additional validations?
+          #Rename file before calling rpc method
+          generated_uuid = str(uuid.uuid1())
+          audiofile.filename = f"{Path(audiofile.filename).stem.replace(' ','_')}_{generated_uuid}{Path(audiofile.filename).suffix}"  
+          print (audiofile.filename)
           self.metodo_llamar(audiofile)
           return 200, "Recibido"
         else:

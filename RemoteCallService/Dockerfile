@@ -1,7 +1,8 @@
 FROM continuumio/miniconda3
+ENV TRAINED_MODELS_PATH /app/models/
 COPY demucs/ remote_call_demucs_service.py config.yml /app/
 WORKDIR /app
-
+#TODO: Check if replacing $TRAINED_MODELS_PATH in Volume and Workidir is good practice
 VOLUME /app/models/
 WORKDIR /app/models/
 #Checks if attached volume contains models, otherwise downloads pretrained models to avoid using -dl parameter at running time.
@@ -16,6 +17,7 @@ RUN [[ ! "$(ls -A /app/models/*.th* 2>/dev/null )" ]] && wget "https://dl.fbaipu
 && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light_extra.th.gz" \
 && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet.th" \
 && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet_extra.th"
+VOLUME  /data 
 WORKDIR /app
 #TODO: Add env variables to set cpu or gpu? 
 #I don't know if is even possible to run gpu environment properly inside container.
