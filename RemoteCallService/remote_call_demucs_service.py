@@ -3,14 +3,14 @@ from nameko.rpc import rpc
 from werkzeug.datastructures import FileStorage
 import subprocess
 
-class SubService:
-    """ Event listening service. """
-    name = "subsservice"
+class RemoteCallDemucsService:
+    """ Service that can be called remotely """
+    name = "remote_call_demucs_service"
 
-    #@event_handler("http_service", event_type=SINGLETON )
-    #def handle_event(self, payload):
+    # This method will be called via rpc
+    # it just call via cli demucs
     @rpc
-    def servicio_remoto(self, audiofile, filename ):
+    def call_demucs(self, audiofile, filename ):
         # f = open(str(uuid.uuid1())+".mp3","wb")
         f = open(filename,"wb")
         f.write(audiofile)
