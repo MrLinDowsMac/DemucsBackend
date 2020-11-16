@@ -1,5 +1,4 @@
-from nameko.events import EventDispatcher, event_handler, SERVICE_POOL, SINGLETON
-from nameko.rpc import rpc
+from nameko.rpc import rpc, RpcProxy
 from werkzeug.datastructures import FileStorage
 import subprocess
 import os
@@ -19,11 +18,16 @@ class RemoteCallDemucsService:
         f = open(str(filepathw),"wb")
         f.write(audiofile)
         f.close()
-        #print("recibido desde http service:", payload)
         
         models_path = os.getenv('TRAINED_MODELS_PATH')
-        outputfolder = Path(f"{filepathw.parent}/{filepathw.stem}")
-        #TODO: Add additional parameters and a way to called in a sanitized way
-        #TODO: Add parameter mp3
-        exitcode = subprocess.call(f"python3 -m demucs.separate -n demucs --models { models_path } --out { str(outputfolder) } { str(filepathw) }" , shell=True)
+        outputfolder = Path(f"{filepathw.parent}/{filepathw.stem}") #will create folder of same filename
+        #TODO: Add additional parameters 
+        exitcode = subprocess.call(f"python3 -m demucs.separate " + 
+            f"-n demucs " + 
+            f"--models { models_path } " + 
+            f"{ '--mp3' if filepathw.suffix == '.mp3' else '' } " + #mp3
+            f"--out { str(outputfolder) } " + 
+            f"{ str(filepathw) }" 
+            ,shell=True
+            )
         return exitcode

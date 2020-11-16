@@ -1,6 +1,10 @@
 FROM continuumio/miniconda3
-ENV TRAINED_MODELS_PATH /app/models/
+ENV RABBITMQ_HOST 127.0.0.1:5672
+ENV RABBITMQ_USER guest
+ENV RABBITMQ_PASSWORD guest
+RUN mkdir -p /app
 COPY demucs/ remote_call_demucs_service.py config.yml /app/
+ENV TRAINED_MODELS_PATH /app/models/
 WORKDIR /app
 #TODO: Check if replacing $TRAINED_MODELS_PATH in Volume and Workidir is good practice
 VOLUME /app/models/
