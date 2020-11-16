@@ -1,0 +1,2 @@
+# config.yml
+SENDGRID_KEY: ${SENDGRID_KEY}

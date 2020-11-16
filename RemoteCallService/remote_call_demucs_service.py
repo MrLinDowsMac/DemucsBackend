@@ -8,10 +8,12 @@ class RemoteCallDemucsService:
     """ Service that can be called remotely """
     name = "remote_call_demucs_service"
 
+    rpcMailServiceProxy = RpcProxy("sendmailservice")
+
     # This method will be called via rpc
     # it just call via cli demucs
     @rpc
-    def call_demucs(self, audiofile, filename ):
+    def call_demucs(self, audiofile, filename, email ):
         
         #Receives binary file from caller and writes to volume
         filepathw = Path(f"/data/{ filename }")
@@ -30,4 +32,11 @@ class RemoteCallDemucsService:
             f"{ str(filepathw) }" 
             ,shell=True
             )
+        #self.send_notification_email(email, filename)        
         return exitcode
+    
+    # def send_notification_email(self,email,filename):
+    #     subject = "Your audio file has been separated"
+    #     body = f"We have separated your audio file and you can download them here: ${filepathw}"
+    #     #Send email #pylint: disable=no-member
+    #     self.rpcMailServiceProxy.send_email.call(email,subject, body )
