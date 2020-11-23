@@ -6,6 +6,7 @@ from pathlib import Path
 import uuid
 import os
 from pathlib import Path
+import glob
 
 class DemucsHttpService:
     name = "demucshttpservice"    
@@ -23,17 +24,24 @@ class DemucsHttpService:
           audiofile.filename = f"{Path(audiofile.filename).stem.replace(' ','_')}_{generated_uuid}{Path(audiofile.filename).suffix}"  
           print (audiofile.filename)
           self.metodo_llamar(audiofile)
-          return 200, "Recibido"
+          # { "token": generated_uuid, 
+          #   "model": "demucs",
+          #   "status" : "Processing"
+          #    }
+          resp = Response(generated_uuid,200,headers={ "Content-Type" : "application/json" })
+          return resp
         else:
           return 400, "File not valid"
       else:
         return 400, "File not valid"
         #TODO: Check request content-type as binary
     
-    @http('GET','/get_file/<string:value>')
+    #TODO: Add parameter for model
+    @http('GET','/get_file/<string:value>') #uuid
     def get_method(self,request,value):
-      filepathw = Path(f"/data/{value}")
-      if ( os.path.isfile(filepathw) ):
+      match = glob.glob(f"/data/*{value}/result-demucs-separated.zip")
+      if (len(match) > 0):
+        filepathw = Path(match[0])
         f = open(str(filepathw),"rb")
         resp = Response(f.read(),200,headers={ "Content-Type" : "application/octet-stream" })
         return resp
