@@ -7,6 +7,7 @@ import uuid
 import os
 from pathlib import Path
 import glob
+import json
 
 class DemucsHttpService:
     name = "demucshttpservice"    
@@ -24,11 +25,8 @@ class DemucsHttpService:
           audiofile.filename = f"{Path(audiofile.filename).stem.replace(' ','_')}_{generated_uuid}{Path(audiofile.filename).suffix}"  
           print (audiofile.filename)
           self.metodo_llamar(audiofile)
-          # { "token": generated_uuid, 
-          #   "model": "demucs",
-          #   "status" : "Processing"
-          #    }
-          resp = Response(generated_uuid,200,headers={ "Content-Type" : "application/json" })
+          objResponse = { "token": f"{generated_uuid}","model": "demucs","status" : "Processing" }
+          resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
           return resp
         else:
           return 400, "File not valid"
