@@ -35,7 +35,7 @@ class DemucsHttpService:
       filepathw = Path(f"/data/{value}")
       if ( os.path.isfile(filepathw) ):
         f = open(str(filepathw),"rb")
-        resp = Response(f.read(),200)
+        resp = Response(f.read(),200,headers={ "Content-Type" : "application/octet-stream" })
         return resp
       else:
         return 404, "File not found"

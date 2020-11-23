@@ -21,12 +21,11 @@ class RemoteCallDemucsService:
         
         models_path = os.getenv('TRAINED_MODELS_PATH')
         outputfolder = Path(f"{filepathw.parent}/{filepathw.stem}") #will create folder of same filename
-        #TODO: Add additional parameters 
-        exitcode = subprocess.call(f"python3 -m demucs.separate " + 
-            f"-n demucs " + 
-            f"--models { models_path } " + 
-            f"{ '--mp3' if filepathw.suffix == '.mp3' else '' } " + #mp3
-            f"--out { str(outputfolder) } " + 
+        #TODO: Add additional parameters, sanitize input,
+        exitcode = subprocess.call(f"/app/separate.sh "+
+            f"{ models_path } " + 
+            f"{ 'mp3' if filepathw.suffix == '.mp3' else 'wav' } " +
+            f"{ str(outputfolder) } " + 
             f"{ str(filepathw) }" 
             ,shell=True
             )
