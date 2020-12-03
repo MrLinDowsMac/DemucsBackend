@@ -14,12 +14,19 @@ import json
 
 app = Flask(__name__)
 Swagger(app)
-CONFIG = {'AMQP_URI': "amqp://guest:guest@localhost"}
+
+rabbitmq_host = os.environ.get("RABBITMQ_HOST")
+rabbitmq_user = os.environ.get("RABBITMQ_USER")
+rabbitmq_password = os.environ.get("RABBITMQ_PASSWORD")
+
+CONFIG = { 'AMQP_URI': f"amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}",
+    'serializer': 'pickle'
+  }
 
 #name = "demucshttpservice"    
 
 @app.route('/upload', methods=['POST'])
-def upload(request):
+def upload():
     """Upload a WAV or MP3 file to be processed
      ---
     summary: "uploads a sound file"
@@ -63,28 +70,28 @@ def upload(request):
             $ref: "#/definitions/ErrorResponse"
     """ 
     with ClusterRpcProxy(CONFIG) as rpc:
-    if request.content_type.startswith("multipart/form-data"):
-      audiofile = request.files.get("file") #busca key
-      original_name = audiofile.filename
-      if audiofile.mimetype == "audio/mpeg" or audiofile.mimetype == "audio/wave":
-        #Rename file before calling rpc method
-        generated_uuid = str(uuid.uuid4())
-        audiofile.filename = f"{Path(audiofile.filename).stem.replace(' ','_')}_{generated_uuid}{Path(audiofile.filename).suffix}"  
-        print (audiofile.filename)
-        metodo_llamar(audiofile)
-        objResponse = { "token": f"{generated_uuid}","model": "demucs","status" : "Processing" }
-        result = rpc.remote_call_demucs_service.call_demucs.call_async(audiofile.read(), audiofile.filename)
-        resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
-        return resp
+      if request.content_type.startswith("multipart/form-data"):
+        audiofile = request.files.get("file") #busca key
+        original_name = audiofile.filename
+        if audiofile.mimetype == "audio/mpeg" or audiofile.mimetype == "audio/wave":
+          #Rename file before calling rpc method
+          generated_uuid = str(uuid.uuid4())
+          #TODO: Try to use secure_filename()?
+          audiofile.filename = f"{Path(audiofile.filename).stem.replace(' ','_')}_{generated_uuid}{Path(audiofile.filename).suffix}"  
+          print (audiofile.filename)
+          objResponse = { "uuid": f"{generated_uuid}","model": "demucs","status" : "Processing" }
+          result = rpc.remote_call_demucs_service.call_demucs.call_async(audiofile.read(), audiofile.filename)
+          resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
+          return resp
+        else:
+          return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
       else:
         return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
-    else:
-      return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
-        #TODO: Check request content-type as binary
+          #TODO: Check request content-type as binary
 
 #TODO: Add parameter for model
 @app.route('/get_file/<uuid:token>', methods=['GET']) #uuid
-def get_file(request,token):
+def get_file(token):
   """Request file by token and retrieve if is already processed
      ---
     summary: "Request file by token and retrieve it in a zip file if is already processed"
@@ -122,4 +129,4 @@ def get_file(request,token):
       return Response(json.dumps({"message": "File not found"}),404,headers={ "Content-Type" : "application/json" })
 
 if __name__ == '__main__':
-  app.run(debug=True)
+  app.run()
