@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flasgger import Swagger, swag_from
-#from nameko.standalone.rpc import ClusterRpcProxy
+from nameko.standalone.rpc import ClusterRpcProxy
 from nameko.web.handlers import http
 from werkzeug.wrappers import Response,Request
 from werkzeug.datastructures import FileStorage
@@ -16,11 +16,10 @@ app = Flask(__name__)
 Swagger(app)
 CONFIG = {'AMQP_URI': "amqp://guest:guest@localhost"}
 
-name = "demucshttpservice"    
-y = RpcProxy("remote_call_demucs_service")
+#name = "demucshttpservice"    
 
-@app.route('/send_file', methods=['POST'])
-def send_file(request):
+@app.route('/upload', methods=['POST'])
+def upload(request):
     """Upload a WAV or MP3 file to be processed
      ---
     summary: "uploads a sound file"
@@ -35,10 +34,10 @@ def send_file(request):
         required: false
         type: "file"
     definitions:
-      Response:
+      ProcessUUID:
         type: "object"
         properties:
-          token:
+          uuid:
             type: "string"
             format: "uuid"
           model:
@@ -47,14 +46,23 @@ def send_file(request):
           status:
             type: "string"
             example: "Processing"
+      ErrorResponse:
+        type: "object"
+        properties:
+          message:
+            type: "string"
+            format: "string"
     responses:
         "200":
-          description: "successful operation"
+          description: "Successful request"
           schema:
-            $ref: "#/definitions/Response"
+            $ref: "#/definitions/ProcessUUID"
         "400":
           description: "File not valid"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     """ 
+    with ClusterRpcProxy(CONFIG) as rpc:
     if request.content_type.startswith("multipart/form-data"):
       audiofile = request.files.get("file") #busca key
       original_name = audiofile.filename
@@ -65,12 +73,13 @@ def send_file(request):
         print (audiofile.filename)
         metodo_llamar(audiofile)
         objResponse = { "token": f"{generated_uuid}","model": "demucs","status" : "Processing" }
+        result = rpc.remote_call_demucs_service.call_demucs.call_async(audiofile.read(), audiofile.filename)
         resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
         return resp
       else:
-        return 400, "File not valid"
+        return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
     else:
-      return 400, "File not valid"
+      return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
         #TODO: Check request content-type as binary
 
 #TODO: Add parameter for model
@@ -81,17 +90,27 @@ def get_file(request,token):
     summary: "Request file by token and retrieve it in a zip file if is already processed"
     produces:
       - "application/zip"
+      - "application/json"
     parameters:
       - name: "token"
         in: "path"
         description: "Token (or uuid) received after successful post in /send_file"
         required: true
         type: "string"
+    definitions:
+      ErrorResponse:
+        type: "object"
+        properties:
+          message:
+            type: "string"
+            format: "string"
     responses:
         "200":
-          description: "successful operation"
+          description: "successful request"
         "404":
           description: "File not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   """ 
   match = glob.glob(f"/data/*{token}/result-demucs-separated.zip")
   if (len(match) > 0):
@@ -100,12 +119,7 @@ def get_file(request,token):
       resp = Response(f.read(),200,headers={ "Content-Type" : "application/zip" })
       return resp
   else:
-      return 404, "File not found"
-
-#@rpc
-def metodo_llamar(audiofile):
-  #This calls remotely demucs
-  y.call_demucs.call_async(audiofile.read(), audiofile.filename )
+      return Response(json.dumps({"message": "File not found"}),404,headers={ "Content-Type" : "application/json" })
 
 if __name__ == '__main__':
   app.run(debug=True)
