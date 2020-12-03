@@ -25,7 +25,7 @@ SHELL ["/bin/bash","-c"]
 # && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet_extra.th"
 VOLUME  /data 
 WORKDIR /app
-RUN apt-get install zip
+RUN apt-get update -y && apt-get install zip -y
 #TODO: Add env variables to set cpu or gpu? 
 #I don't know if is even possible to run gpu environment properly inside container.
 RUN ["conda" ,"env", "update", "-f", "environment-cpu.yml"]
