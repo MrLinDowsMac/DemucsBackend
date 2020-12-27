@@ -58,6 +58,7 @@ class Upload(Resource):
           if audiofile.mimetype == "audio/mpeg" or audiofile.mimetype == "audio/wave":
             #Rename file before calling rpc method
             generated_uuid = str(uuid.uuid4())
+            log.info('generated uuid: %s', generated_uuid)
             audiofile.filename = f"{Path(original_name).stem.replace(' ','_')}_{generated_uuid}{Path(original_name).suffix}"  
             log.info('filename %s will be sent to queue', audiofile.filename)
             try: 
@@ -67,10 +68,13 @@ class Upload(Resource):
                 resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
                 return resp
             except (ConnectionRefusedError):
+              log.error('An error ocurred because call rpc method is not available')
               api.abort(code=500, message="An internal server error ocurred. Unable to reach Demucs service")  
             except (OSError, socket.gaierror):
+              log.error('An error ocurred because was unable to connect to AMQP broker')
               api.abort(code=500, message="An internal server error ocurred. Demucs service unavailable")  
           else:
+            log.info('Attemped to upload a file that is not mp3 or wav')
             api.abort(code=415, message="File not valid.")
         # else:
         #   return Response(json.dumps({"message": "File not valid"}),400,headers={ "Content-Type" : "application/json" })
@@ -86,11 +90,14 @@ class GetFile(Resource):
     '''Request file by token and retrieve if is already processed''' 
     match = glob.glob(f"/data/*{token}/result-demucs-separated.zip")
     if (len(match) > 0):
+        log.info('A match for with the token %s found', token)
         filepathw = Path(match[0])
+        log.info('Attempt to read file... %s', str(filepathw))
         f = open(str(filepathw),"rb")
         resp = Response(f.read(),200,headers={ "Content-Type" : "application/zip" })
         return resp
     else:
+        log.info('File is not found...yet')
         api.abort(code=404, message="File not found.")
 
 if __name__ == '__main__':
