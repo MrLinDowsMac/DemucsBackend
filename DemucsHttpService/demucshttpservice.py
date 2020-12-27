@@ -11,6 +11,7 @@ from pathlib import Path
 import glob
 import json
 from flask.logging import create_logger
+import socket
 
 app = Flask(__name__)
 log = create_logger(app)
@@ -49,7 +50,8 @@ class Upload(Resource):
   @api.response(400, 'Validation Error', errorResponse)
   @api.response(500, 'Internal Server Error', errorResponse)
   def post(self):
-        # if request.content_type.startswith("multipart/form-data"):
+          '''Upload a file and receive a token or uuid for further file retrieving after processing'''
+          # if request.content_type.startswith("multipart/form-data"):
           args = upload_parser.parse_args()
           audiofile = args['file'] #busca key 
           original_name = secure_filename(audiofile.filename)
@@ -65,7 +67,9 @@ class Upload(Resource):
                 resp = Response(json.dumps(objResponse),200,headers={ "Content-Type" : "application/json" })
                 return resp
             except (ConnectionRefusedError):
-              api.abort(code=500, message="An internal error ocurred. Demucs service unavailable")  
+              api.abort(code=500, message="An internal server error ocurred. Unable to reach Demucs service")  
+            except (OSError, socket.gaierror):
+              api.abort(code=500, message="An internal server error ocurred. Demucs service unavailable")  
           else:
             api.abort(code=415, message="File not valid.")
         # else:
