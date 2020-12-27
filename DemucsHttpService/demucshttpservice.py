@@ -94,7 +94,7 @@ class GetFile(Resource):
         filepathw = Path(match[0])
         log.info('Attempt to read file... %s', str(filepathw))
         f = open(str(filepathw),"rb")
-        resp = Response(f.read(),200,headers={ "Content-Type" : "application/zip" })
+        resp = Response(f.read(),200,headers={ "Content-Type" : "application/zip","content-disposition": f"attachment; filename={token}.zip" })
         return resp
     else:
         log.info('File is not found...yet')
