@@ -1,4 +1,0 @@
-# config.yml
-#AMQP_URI: 'amqp://guest:guest@127.0.0.1:5672/'
-AMQP_URI: amqp://${RABBITMQ_USER:guest}:${RABBITMQ_PASSWORD:guest}@${RABBITMQ_HOST:localhost}
-serializer: pickle
