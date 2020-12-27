@@ -5,7 +5,7 @@ ENV RABBITMQ_PASSWORD guest
 ENV FLASK_ENV production
 ENV FLASK_APP demucshttpservice.py
 RUN mkdir -p /app
-COPY demucshttpservice.py config.yml /app/
+COPY demucshttpservice.py /app/
 WORKDIR /app/
 RUN apt-get update -y && pip3 install nameko & pip3 install flask-restx
 EXPOSE 5000
