@@ -12,6 +12,7 @@ import glob
 import json
 from flask.logging import create_logger
 import socket
+import fleep
 
 app = Flask(__name__)
 log = create_logger(app)
@@ -20,6 +21,9 @@ api = Api(blueprint, doc='/apidoc/',version='1.0', title='Demucs API', descripti
 
 app.register_blueprint(blueprint)
 app.config.SWAGGER_UI_DOC_EXPANSION = 'full'
+
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 300 #Around 300 MBs max size
+app.config['UPLOAD_EXTENSIONS'] = ['.mp3', '.wav']
 
 rabbitmq_host = os.environ.get("RABBITMQ_HOST")
 rabbitmq_user = os.environ.get("RABBITMQ_USER")
@@ -55,7 +59,13 @@ class Upload(Resource):
           args = upload_parser.parse_args()
           audiofile = args['file'] #busca key 
           original_name = secure_filename(audiofile.filename)
-          if audiofile.mimetype == "audio/mpeg" or audiofile.mimetype == "audio/wave":
+          log.info('An audio file uploaded with the name: %s', original_name)
+          infofile = fleep.get(audiofile.read(128))
+          log.info('file extension is: %s', infofile.extension)
+          log.info('file mimetype is: %s', infofile.mime)
+          log.info('file type is: %s', infofile.type)
+          if infofile.type_matches("audio") and (infofile.mime_matches("audio/mpeg") or infofile.mime_matches('audio/wav')) \
+            and (infofile.extension_matches('wav') or infofile.extension_matches('mp3')):
             #Rename file before calling rpc method
             generated_uuid = str(uuid.uuid4())
             log.info('generated uuid: %s', generated_uuid)
