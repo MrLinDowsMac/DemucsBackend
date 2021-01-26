@@ -1,35 +1,63 @@
-FROM continuumio/miniconda3
+# The build-stage image:
+FROM continuumio/miniconda3 AS build
+#COPY demucs/ remote_call_demucs_service.py config.yml separate.sh /app/
+COPY demucs/environment-cpu.yml  .
+#TODO: Add env variables to set cpu or gpu? 
+#Apparently Docker now supports running gpus, check how run environment properly inside container.
+
+RUN ["conda" ,"env", "update", "-f", "environment-cpu.yml"]
+
+# Install conda-pack:
+RUN conda install -c conda-forge conda-pack
+
+# Use conda-pack to create a standalone enviornment
+# in /venv:
+RUN conda-pack -n demucs -o /tmp/env.tar && \
+  mkdir /venv && cd /venv && tar xf /tmp/env.tar && \
+  rm /tmp/env.tar
+
+# We've put venv in same path it'll be in final image,
+# so now fix up paths:
+RUN /venv/bin/conda-unpack
+
+
+# The runtime-stage image; we can use Debian as the
+# base image since the Conda env also includes Python
+# for us.
+#FROM debian:buster AS runtime
+FROM python:3.7.9-buster AS runtime
 ENV RABBITMQ_HOST 127.0.0.1:5672
 ENV RABBITMQ_USER guest
 ENV RABBITMQ_PASSWORD guest
-RUN mkdir -p /app
-COPY demucs/ remote_call_demucs_service.py config.yml separate.sh /app/
+
+RUN mkdir -p /app/models/
+
 ENV TRAINED_MODELS_PATH /app/models/
-WORKDIR /app
-#TODO: Check if replacing $TRAINED_MODELS_PATH in Volume and Workidir is good practice
-VOLUME /app/models/
-WORKDIR /app/models/
-#Checks if attached volume contains models, otherwise downloads pretrained models to avoid using -dl parameter at running time.
-SHELL ["/bin/bash","-c"]
-#Temporarly disabled this run, takes a lot of time, hours and can't find them /app/models
-#RUN [[ ! "$(ls -A /app/models/*.th* 2>/dev/null )" ]] && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light.th" 
-# wget "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs.th" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs.th.gz" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs_extra.th" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs_extra.th.gz" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light.th" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light.th.gz" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light_extra.th" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/light_extra.th.gz" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet.th" \
-# && wget "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet_extra.th"
+
+# Copy /venv from the previous stage:
+COPY --from=build /venv /venv
+COPY demucs/ remote_call_demucs_service.py config.yml separate.sh /app/
+#WORKDIR /app/models/
+#Downloads pretrained models to avoid using -dl parameter at running time.
+#Takes a lot of time and makes a very big image size, hope can find an alternative
+#RUN wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs.th" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs.th.gz" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs_extra.th" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/demucs_extra.th.gz" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/light.th" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/light.th.gz" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/light_extra.th" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/light_extra.th.gz" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet.th" \
+#&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet_extra.th"
 VOLUME  /data 
 WORKDIR /app
 RUN apt-get update -y && apt-get install zip -y
-#TODO: Add env variables to set cpu or gpu? 
-#I don't know if is even possible to run gpu environment properly inside container.
-RUN ["conda" ,"env", "update", "-f", "environment-cpu.yml"]
-SHELL ["conda", "run","-n","demucs","/bin/bash","-c"]
-RUN conda activate demucs
+#SHELL ["conda", "run","-n","demucs","/bin/bash","-c"]
+#RUN conda activate demucs
+SHELL ["/bin/bash", "-c"]
 RUN ["pip" ,"install", "nameko"]
-CMD ["nameko","run", "remote_call_demucs_service", "--config","config.yml"]
+#RUN source /app/bin/activate && pip install nameko 
+#CMD ["nameko","run", "remote_call_demucs_service", "--config","config.yml"]
+ENTRYPOINT source /venv/bin/activate && \
+    nameko run remote_call_demucs_service --config config.yml
