@@ -1,10 +1,8 @@
 # The build-stage image:
 FROM continuumio/miniconda3 AS build
-#COPY demucs/ remote_call_demucs_service.py config.yml separate.sh /app/
-COPY demucs/environment-cpu.yml  .
 #TODO: Add env variables to set cpu or gpu? 
 #Apparently Docker now supports running gpus, check how run environment properly inside container.
-
+COPY demucs/environment-cpu.yml  .
 RUN ["conda" ,"env", "update", "-f", "environment-cpu.yml"]
 
 # Install conda-pack:
@@ -25,7 +23,7 @@ RUN /venv/bin/conda-unpack
 # base image since the Conda env also includes Python
 # for us.
 #FROM debian:buster AS runtime
-FROM python:3.7.9-buster AS runtime
+FROM python:3.8.7-alpine3.12 AS runtime
 ENV RABBITMQ_HOST 127.0.0.1:5672
 ENV RABBITMQ_USER guest
 ENV RABBITMQ_PASSWORD guest
@@ -52,12 +50,9 @@ COPY demucs/ remote_call_demucs_service.py config.yml separate.sh /app/
 #&& wget --progress=bar:force:noscroll "https://dl.fbaipublicfiles.com/demucs/v2.0/tasnet_extra.th"
 VOLUME  /data 
 WORKDIR /app
-RUN apt-get update -y && apt-get install zip -y
-#SHELL ["conda", "run","-n","demucs","/bin/bash","-c"]
-#RUN conda activate demucs
+RUN apk add zip bash gcc musl-dev g++
 SHELL ["/bin/bash", "-c"]
 RUN ["pip" ,"install", "nameko"]
-#RUN source /app/bin/activate && pip install nameko 
-#CMD ["nameko","run", "remote_call_demucs_service", "--config","config.yml"]
+
 ENTRYPOINT source /venv/bin/activate && \
     nameko run remote_call_demucs_service --config config.yml
