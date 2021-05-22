@@ -19,10 +19,9 @@ RUN conda-pack -n demucs -o /tmp/env.tar && \
 RUN /venv/bin/conda-unpack
 
 
-# The runtime-stage image; we can use Debian as the
+# The runtime-stage image; we use Alpine-based
 # base image since the Conda env also includes Python
-# for us.
-#FROM debian:buster AS runtime
+# for us and is a bit more lightweight than Debian.
 FROM python:3.8.7-alpine3.12 AS runtime
 ENV RABBITMQ_HOST 127.0.0.1:5672
 ENV RABBITMQ_USER guest
